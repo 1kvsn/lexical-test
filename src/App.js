@@ -1,8 +1,6 @@
 import React, {useEffect} from 'react';
 import './App.css';
 
-import {$getRoot, $getSelection} from 'lexical';
-import {$generateHtmlFromNodes} from '@lexical/html';
 import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
 
 import {LexicalComposer} from '@lexical/react/LexicalComposer';
@@ -11,14 +9,6 @@ import {ContentEditable} from '@lexical/react/LexicalContentEditable';
 import {HistoryPlugin} from '@lexical/react/LexicalHistoryPlugin';
 import {OnChangePlugin} from '@lexical/react/LexicalOnChangePlugin';
 
-import {EmojiNode} from './nodes/EmojiNode';
-
-// const exampleTheme = {
-//   ltr: 'ltr',
-//   rtl: 'rtl',
-//   placeholder: 'editor-placeholder',
-//   paragraph: 'editor-paragraph',
-// };
 
 const exampleTheme = {
   ltr: 'ltr',
@@ -27,117 +17,62 @@ const exampleTheme = {
   paragraph: 'editor-paragraph',
 };
 
-const editorConfig = {
-  theme: exampleTheme,
-  onError(error) {
-    throw error;
-  },
-  nodes: [],
-  readOnly: true,
-  editorState: editor => {
-    const editorState = editor.parseEditorState(DUMMY_JSON_STRINGIFIED);
-    editor.setEditorState(editorState);
-  },
-};
 
-//------- EDITOR CONFIG FOR CREATE POST -------
 
-const DUMMY_JSON_STRINGIFIED = `{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"React Native combines the best parts of native development with React, a best-in-class JavaScript library for building user interfaces. React Native combines the best parts of native development with React, a best-in-class JavaScript library for building user interfaces. React Native combines the best parts of native development with React, a best-in-class JavaScript library for building user interfaces. React Native combines the best parts of native development with React, a best-in-class JavaScript library for building user interfaces. React Native combines the best parts of native development with React, a best-in-class JavaScript library for building user interfaces.","type":"text","version":1}],"direction":"ltr","format":"","indent":0,"type":"paragraph","version":1}],"direction":"ltr","format":"","indent":0,"type":"root","version":1}}`;
 
-function onChangeFromFirstSandbox(editorState, editor) {
-  // TO CONVERT EDITOR STATE TO HTML & SEND TO FE (REACT NATIVE)
-  editor.update(() => {
-    const htmlString = $generateHtmlFromNodes(editor, null);
-    console.log(htmlString, '--htmlString');
-    // window.ReactNativeWebView.postMessage(
-    //   JSON.stringify(editor),
-    //   '--htmlString',
-    // ); //SENDING_HTML_EDITOR_STATE
-  });
+const DUMMY_JSON_STRINGIFIED = {"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"React Native combines the best parts of native development with React, a best-in-class JavaScript library for building user interfaces. React Native combines the best parts of native development with React, a best-in-class JavaScript library for building user interfaces. React Native combines the best parts of native development with React, a best-in-class JavaScript library for building user interfaces. React Native combines the best parts of native development with React, a best-in-class JavaScript library for building user interfaces. React Native combines the best parts of native development with React, a best-in-class JavaScript library for building user interfaces.","type":"text","version":1}],"direction":"ltr","format":"","indent":0,"type":"paragraph","version":1}],"direction":"ltr","format":"","indent":0,"type":"root","version":1}};
 
-  // ------- TO SEND JSON TO REACT NATIVE -------
-  const jsonConversion = editorState.toJSON();
-  // window.ReactNativeWebView.postMessage(
-  //   JSON.stringify(jsonConversion),
-  //   '--jsonConversion',
-  // ); //SENDING_JSON_EDITOR_STATE
-  console.log(JSON.stringify(jsonConversion), '--JSON stringify');
 
-  // ----- TESTS -----
-  // console.log(jsonConversion.root, "--json");
-  // window.ReactNativeWebView.postMessage(jsonConversion, "--jsonConversion");
-  // const editorStateToJSON = JSON.stringify(
-  //   DUMMY_JSON_STRINGIFIED_WITH_COIN_AND_MENTION
-  // );
-  // console.log(editorStateToJSON, "--editorStateToJSON");
-  editorState.read(() => {
-    // Read the contents of the EditorState here.
-    const root = $getRoot();
-    const selection = $getSelection();
+function getInitialConfig(props) {
+  return {
+    theme: exampleTheme,
+    onError(error) {
+      throw error;
+    },
+    nodes: [],
+    readOnly: false,
+    editorState: editor => {
+      if (props.json?.hasOwnProperty('root')) {
+        const editorState = editor.parseEditorState(props.json);
+        editor.setEditorState(editorState);
+      }
 
-    console.log(root, selection, '--root, selection');
-
-    // // console.log(root, selection);
-    // const htmlString = $generateHtmlFromNodes(editor, selection || null);
-    // console.log(htmlString, "--htmlString");
-    // console.log(root, "--text here");
-    // window.ReactNativeWebView.postMessage(root);
-    // window.ReactNativeWebView.postMessage(root.__cachedText); // was able to print EDITOR text
-  });
+    },
+  }
 }
 
-function onChangeFromSecondSandbox(editorState, editor) {
-  // alert(JSON.stringify(editorState));
-  // window.addEventListener("message", (message) => {
-  //   console.log(message.data); // Wayne is coming!!!
-  // });
-  // ------- TO SHOW JSON DATA IN WEBVIEW -------
-  const json = JSON.parse(DUMMY_JSON_STRINGIFIED);
-  const editorStateNew = editor.parseEditorState(JSON.stringify(json));
-  console.log(editorStateNew, '--editorStateNew');
-  editor.setEditorState(editorStateNew);
-  // editor.setEditorState(editorRootNode);
-  console.log(
-    editor.setEditorState(editorStateNew),
-    '--editor.setEditorState(editorStateNew)',
-  );
-  // ----- TESTS -----
-  // console.log(jsonConversion.root, "--json");
-  // window.ReactNativeWebView.postMessage(jsonConversion, "--jsonConversion");
-  // const editorStateToJSON = JSON.stringify(
-  //   DUMMY_JSON_STRINGIFIED_WITH_COIN_AND_MENTION
-  // );
-  // console.log(editorStateToJSON, "--editorStateToJSON");
-  // editorState.read(() => {
-  // console.log(jsonConversion, "--json");
-  // Read the contents of the EditorState here.
-  // const root = $getRoot();
-  // const selection = $getSelection();
-  // console.log(root, selection);
-  // console.log(root, "--text here");
-  // window.ReactNativeWebView.postMessage(root);
-  // window.ReactNativeWebView.postMessage(root.__cachedText); // was able to print EDITOR text
-  //   });
-}
+const Editor = React.forwardRef((props, ref) => {
+  const editorStateRef = React.useRef();
 
-function Editor() {
+
+  // This is a hook used to expose exportJSON method to the parent component so that this method can be accessed using ref.
+  React.useImperativeHandle(ref, () => {
+    return {
+      exportJSON: () => {
+        const editorState = editorStateRef.current
+        return editorState?.toJSON()
+      },
+    }
+  })
+
   return (
-    <LexicalComposer initialConfig={editorConfig}>
-      <div className="editor-container">
-        <PlainTextPlugin
-          contentEditable={<ContentEditable className="editor-input" />}
-          placeholder={<Placeholder />}
-        />
-        <OnChangePlugin onChange={onChangeFromSecondSandbox} />
-        {/* <OnChangePlugin onChange={onChangeFromFirstSandbox} /> */}
+        <LexicalComposer initialConfig={getInitialConfig(props)}>
+          <div className="editor-container">
+            <PlainTextPlugin
+                contentEditable={<ContentEditable className="editor-input" />}
+                placeholder={<Placeholder />}
+            />
 
-        <HistoryPlugin />
+            <OnChangePlugin onChange={(editorState) => (editorStateRef.current = editorState)} />
 
-        <MyCustomAutoFocusPlugin />
-      </div>
-    </LexicalComposer>
+            <HistoryPlugin />
+
+            <MyCustomAutoFocusPlugin />
+          </div>
+
+        </LexicalComposer>
   );
-}
+})
 
 function Placeholder() {
   return <div className="editor-placeholder">Write your thoughts here...</div>;
@@ -155,18 +90,62 @@ function MyCustomAutoFocusPlugin() {
 }
 
 function App() {
+  const editorRef = React.useRef();
+
+  // Since 'message' event listener is not firing when data is sent from RN, I was trying to add a custom event listener to this ref and
+  // was trying to listen to that custom event to perform further actions.
+  // However, it is not possible to attach custom listener from RN to elements in this web-view rendered app.
+  // So, this ref is useless for now.
+  const appRef = React.useRef()
+
+  // I was trying to set state with json after it is received from the RN.
+  const [json, setJSON] = React.useState({})
+
   useEffect(() => {
-    window.addEventListener('message', function (event) {
-      console.log(event.data);
-    });
-    document.addEventListener('message', function (event) {
-      console.log(event.data);
-    });
+    // mock api response
+    setTimeout(() => setJSON(DUMMY_JSON_STRINGIFIED), 5000)
   }, []);
+
+
+  // NOTE: I wanted to listen to the data sent from the RN and set the state or perform whatever action with that JSON data.
+  // This does NOT work.
+  // The message listener will not fire this way for data passed from RN.
+  useEffect(() => {
+    window.addEventListener('message', function(e) {
+      console.log('THIS IS FIRING IN WEB APP')
+      console.log(e)
+    })
+
+    document.addEventListener('message', function(e) {
+      console.log('THIS IS FIRING IN DOCUMENT WEB APP')
+      console.log(e)
+    })
+
+  }, [])
+
+  // NOTE: This works fine. We can get JSON from the Lexical and pass it to RN.
+  // As you can see, I've created a method called exportJSON in the Editor component which gives us the raw JSON.
+  function submitToRN() {
+    window.ReactNativeWebView.postMessage(
+        `Hey Priyanka, I'm coming from Web App`,
+    );
+
+    // This works fine. This gets the JSON from Editor component.
+    const rawJSON = editorRef.current.exportJSON()
+
+    // This works fine as well.
+    window.ReactNativeWebView.postMessage(
+        JSON.stringify(rawJSON),
+    );
+  }
+
   return (
-    <div className="App">
-      <div>hello world</div>
-      {/* <Editor /> */}
+    <div className="App" ref={appRef}>
+      <div>This is Editor inside web-view</div>
+      <button onClick={submitToRN}>Submit to RN</button>
+
+      {/* I wanted to render the Editor only if the JSON is present and prevent it from rendering for empty object, so I'm using hasOwnProperty method */}
+      {json?.hasOwnProperty('root') && <Editor json={json} ref={editorRef}/>}
     </div>
   );
 }
