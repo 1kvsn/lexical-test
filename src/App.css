@@ -1,10 +1,11 @@
 .App {
   text-align: center;
+  font-size: 12px;
 }
 
-.editor-container {
+/* .editor-container {
   border: 1px solid black;
-}
+} */
 
 .editor-input {
   height: 100px;
