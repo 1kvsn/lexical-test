@@ -21,6 +21,7 @@ const exampleTheme = {
 
 
 const DUMMY_JSON_STRINGIFIED = {"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"React Native combines the best parts of native development with React, a best-in-class JavaScript library for building user interfaces. React Native combines the best parts of native development with React, a best-in-class JavaScript library for building user interfaces. React Native combines the best parts of native development with React, a best-in-class JavaScript library for building user interfaces. React Native combines the best parts of native development with React, a best-in-class JavaScript library for building user interfaces. React Native combines the best parts of native development with React, a best-in-class JavaScript library for building user interfaces.","type":"text","version":1}],"direction":"ltr","format":"","indent":0,"type":"paragraph","version":1}],"direction":"ltr","format":"","indent":0,"type":"root","version":1}};
+const DUMMY_JSON_STRINGIFIED_CHANGED = {"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"This is set just now","type":"text","version":1}],"direction":"ltr","format":"","indent":0,"type":"paragraph","version":1}],"direction":"ltr","format":"","indent":0,"type":"root","version":1}};
 
 
 function getInitialConfig(props) {
@@ -55,15 +56,20 @@ const Editor = React.forwardRef((props, ref) => {
     }
   })
 
+  injectToWindow('EditorComponent', Editor)
   return (
         <LexicalComposer initialConfig={getInitialConfig(props)}>
           <div className="editor-container">
             <PlainTextPlugin
                 contentEditable={<ContentEditable className="editor-input" />}
-                placeholder={<Placeholder />}
+                placeholder={<Placeholder/>}
             />
 
-            <OnChangePlugin onChange={(editorState) => (editorStateRef.current = editorState)} />
+            <OnChangePlugin onChange={(editorState) => {
+              editorStateRef.current = editorState
+              injectToWindow('editorState', editorState)
+              injectToWindow('exportJSON', editorState.toJSON)
+            }} />
 
             <HistoryPlugin />
 
@@ -75,7 +81,7 @@ const Editor = React.forwardRef((props, ref) => {
 })
 
 function Placeholder() {
-  return <div className="editor-placeholder">Write your thoughts here...</div>;
+  return <div className="editor-placeholder">Write your thoughts here..</div>;
 }
 
 function MyCustomAutoFocusPlugin() {
@@ -89,38 +95,90 @@ function MyCustomAutoFocusPlugin() {
   return null;
 }
 
+function injectToWindow(key, payloadToInject) {
+  window.__kvsn = {
+    ...window.__kvsn,
+    [key]: payloadToInject,
+  }
+}
+
+const messages = {
+  EXPORT_JSON: 'exportJSON',
+  GET_EDITOR_STATE: 'getEditorState',
+  SET_JSON: 'setJSON',
+}
+
 function App() {
   const editorRef = React.useRef();
-
-  // Since 'message' event listener is not firing when data is sent from RN, I was trying to add a custom event listener to this ref and
-  // was trying to listen to that custom event to perform further actions.
-  // However, it is not possible to attach custom listener from RN to elements in this web-view rendered app.
-  // So, this ref is useless for now.
-  const appRef = React.useRef()
 
   // I was trying to set state with json after it is received from the RN.
   const [json, setJSON] = React.useState({})
 
   useEffect(() => {
+    injectToWindow('setJSON', setJSON)
+    
+
     // mock api response
-    setTimeout(() => setJSON(DUMMY_JSON_STRINGIFIED), 5000)
+    setTimeout(() => {
+      
+      setJSON(DUMMY_JSON_STRINGIFIED)
+    }, 0)
   }, []);
 
+  // const injectSanityCheck = `window.ReactNativeWebView.postMessage()`
 
-  // NOTE: I wanted to listen to the data sent from the RN and set the state or perform whatever action with that JSON data.
-  // This does NOT work.
-  // The message listener will not fire this way for data passed from RN.
+
   useEffect(() => {
-    window.addEventListener('message', function(e) {
-      console.log('THIS IS FIRING IN WEB APP')
-      console.log(e)
-    })
+    window.addEventListener('message', function (event) {
+      console.log({event})
+      if (typeof event.data === 'object') return;
+      const message = JSON.parse(event.data);
+      // console.log('webview', message)
+      switch (message.type) {
+        case messages.SET_JSON: {
+          setJSON(DUMMY_JSON_STRINGIFIED_CHANGED)
+          break;
+        }
+        case messages.EXPORT_JSON: {
+          window.ReactNativeWebView.postMessage(JSON.stringify(window.__kvsn.editorState.toJSON()))
+          break;
+        }
+        default:
+          console.log('default case running')
+      }
+  });
 
-    document.addEventListener('message', function(e) {
-      console.log('THIS IS FIRING IN DOCUMENT WEB APP')
-      console.log(e)
-    })
+  window.addEventListener('focus', function (event) {
+    window.ReactNativeWebView.postMessage(JSON.stringify({ready: true}))
+  })
 
+
+  document.addEventListener('message', function (event) {
+    console.log({event})
+    if (typeof event.data === 'object') return;
+    const message = JSON.parse(event.data);
+    // console.log('webview', message)
+    console.log(message.type)
+    switch (message.type) {
+      
+        case messages.SET_JSON: {
+            setJSON(DUMMY_JSON_STRINGIFIED_CHANGED)
+            break;
+        }
+        case messages.EXPORT_JSON: {
+          window.ReactNativeWebView.postMessage(JSON.stringify(window.__kvsn.editorState.toJSON()))
+            break;
+        }
+        
+        default:
+          console.log('default case running')
+    }
+  });
+
+    return () => {
+      window.removeEventListener('message', () => {})
+      document.removeEventListener('message', () => {})
+    }
   }, [])
 
   // NOTE: This works fine. We can get JSON from the Lexical and pass it to RN.
@@ -140,7 +198,7 @@ function App() {
   }
 
   return (
-    <div className="App" ref={appRef}>
+    <div className="App">
       <div>This is Editor inside web-view</div>
       <button onClick={submitToRN}>Submit to RN</button>
 
