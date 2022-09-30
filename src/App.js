@@ -96,8 +96,8 @@ function MyCustomAutoFocusPlugin() {
 }
 
 function injectToWindow(key, payloadToInject) {
-  window.__kvsn = {
-    ...window.__kvsn,
+  window.__torum = {
+    ...window.__torum,
     [key]: payloadToInject,
   }
 }
@@ -140,7 +140,7 @@ function App() {
           break;
         }
         case messages.EXPORT_JSON: {
-          window.ReactNativeWebView.postMessage(JSON.stringify(window.__kvsn.editorState.toJSON()))
+          window.ReactNativeWebView.postMessage(JSON.stringify(window.__torum.editorState.toJSON()))
           break;
         }
         default:
@@ -166,7 +166,7 @@ function App() {
             break;
         }
         case messages.EXPORT_JSON: {
-          window.ReactNativeWebView.postMessage(JSON.stringify(window.__kvsn.editorState.toJSON()))
+          window.ReactNativeWebView.postMessage(JSON.stringify(window.__torum.editorState.toJSON()))
             break;
         }
         
