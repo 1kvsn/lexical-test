@@ -1,4 +1,4 @@
-import React, {useEffect} from 'react';
+import React, {Fragment, useEffect} from 'react';
 import './App.css';
 
 import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
@@ -42,6 +42,10 @@ function getInitialConfig(props) {
   }
 }
 
+const postMyMessage = (type, payload) => {
+  window.ReactNativeWebView.postMessage(JSON.stringify({type, payload}))
+}
+
 const Editor = React.forwardRef((props, ref) => {
   const editorStateRef = React.useRef();
 
@@ -57,26 +61,38 @@ const Editor = React.forwardRef((props, ref) => {
   })
 
   injectToWindow('EditorComponent', Editor)
+  // injectToWindow('postMessageJSONToReactNative', window.ReactNativeWebView.postMessage(JSON.stringify(window.__torum.editorState)))
+  
+  const onPostSubmit = () => {
+    const editorState = editorStateRef.current
+    const json = editorState.toJSON()
+    postMyMessage('submit', json)
+  }
+
   return (
-        <LexicalComposer initialConfig={getInitialConfig(props)}>
-          <div className="editor-container">
-            <PlainTextPlugin
-                contentEditable={<ContentEditable className="editor-input" />}
-                placeholder={<Placeholder/>}
-            />
+    <Fragment>
+      <LexicalComposer initialConfig={getInitialConfig(props)}>
+        <div className="editor-container">
+          <PlainTextPlugin
+              contentEditable={<ContentEditable className="editor-input" />}
+              placeholder={<Placeholder/>}
+          />
 
-            <OnChangePlugin onChange={(editorState) => {
-              editorStateRef.current = editorState
-              injectToWindow('editorState', editorState)
-              injectToWindow('exportJSON', editorState.toJSON)
-            }} />
+          <OnChangePlugin onChange={(editorState) => {
+            editorStateRef.current = editorState
+            injectToWindow('editorState', editorState)
+            injectToWindow('exportJSON', editorState.toJSON())
+          }} />
 
-            <HistoryPlugin />
+          <HistoryPlugin />
 
-            <MyCustomAutoFocusPlugin />
-          </div>
+          <AutoFocusPlugin autoFocus={false} setEditorInstance={(editor) => (editorRef.current = editor)} />
+        </div>
 
-        </LexicalComposer>
+      </LexicalComposer>
+      <button onClick={onPostSubmit}>Post</button>
+    </Fragment>
+        
   );
 })
 
@@ -84,7 +100,7 @@ function Placeholder() {
   return <div className="editor-placeholder">Write your thoughts here..</div>;
 }
 
-function MyCustomAutoFocusPlugin() {
+function AutoFocusPlugin() {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
@@ -115,79 +131,46 @@ function App() {
   const [json, setJSON] = React.useState({})
 
   useEffect(() => {
-    injectToWindow('setJSON', setJSON)
-    
-
     // mock api response
-    setTimeout(() => {
+    // setTimeout(() => {
       
-      setJSON(DUMMY_JSON_STRINGIFIED)
-    }, 0)
+    //   setJSON(DUMMY_JSON_STRINGIFIED)
+    // }, 0)
   }, []);
 
   // const injectSanityCheck = `window.ReactNativeWebView.postMessage()`
 
 
   useEffect(() => {
-    window.addEventListener('message', function (event) {
-      console.log({event})
-      if (typeof event.data === 'object') return;
-      const message = JSON.parse(event.data);
-      // console.log('webview', message)
-      switch (message.type) {
-        case messages.SET_JSON: {
-          setJSON(DUMMY_JSON_STRINGIFIED_CHANGED)
-          break;
-        }
-        case messages.EXPORT_JSON: {
-          window.ReactNativeWebView.postMessage(JSON.stringify(window.__torum.editorState.toJSON()))
-          break;
-        }
-        default:
-          console.log('default case running')
-      }
-  });
+    window.addEventListener('myEvent', function(event) {
+      postMyMessage('myEvent window', event)
+    })
+
+    window.addEventListener('myEvent2', function(event) {
+      postMyMessage('myEvent2 window', event.detail)
+      alert(event.detail)
+      // Consoles won't work inside web-view
+    })
+
+    window.addEventListener('setJSONEvent', function(event) {
+      setJSON(event.detail)
+      alert(typeof event.detail)
+      // Consoles won't work inside web-view
+    })
 
   window.addEventListener('focus', function (event) {
     window.ReactNativeWebView.postMessage(JSON.stringify({ready: true}))
-  })
-
-
-  document.addEventListener('message', function (event) {
-    console.log({event})
-    if (typeof event.data === 'object') return;
-    const message = JSON.parse(event.data);
-    // console.log('webview', message)
-    console.log(message.type)
-    switch (message.type) {
-      
-        case messages.SET_JSON: {
-            setJSON(DUMMY_JSON_STRINGIFIED_CHANGED)
-            break;
-        }
-        case messages.EXPORT_JSON: {
-          window.ReactNativeWebView.postMessage(JSON.stringify(window.__torum.editorState.toJSON()))
-            break;
-        }
-        
-        default:
-          console.log('default case running')
-    }
   });
 
     return () => {
       window.removeEventListener('message', () => {})
-      document.removeEventListener('message', () => {})
+      window.removeEventListener('focus', () => {})
     }
   }, [])
 
   // NOTE: This works fine. We can get JSON from the Lexical and pass it to RN.
   // As you can see, I've created a method called exportJSON in the Editor component which gives us the raw JSON.
   function submitToRN() {
-    window.ReactNativeWebView.postMessage(
-        `Hey Priyanka, I'm coming from Web App`,
-    );
-
     // This works fine. This gets the JSON from Editor component.
     const rawJSON = editorRef.current.exportJSON()
 
@@ -200,7 +183,7 @@ function App() {
   return (
     <div className="App">
       <div>This is Editor inside web-view</div>
-      <button onClick={submitToRN}>Submit to RN</button>
+      <button onClick={submitToRN}>Submit to RN from inside web-view</button>
 
       {/* I wanted to render the Editor only if the JSON is present and prevent it from rendering for empty object, so I'm using hasOwnProperty method */}
       {json?.hasOwnProperty('root') && <Editor json={json} ref={editorRef}/>}
